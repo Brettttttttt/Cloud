@@ -2,14 +2,20 @@
 Configuration settings for the Task Manager API
 """
 import os
-from typing import List
-from pydantic_settings import BaseSettings
+from typing import List, Union
+from pydantic_settings import BaseSettings, SettingsConfigDict
 from pydantic import field_validator
 from functools import lru_cache
 
 
 class Settings(BaseSettings):
     """Application settings and configuration"""
+    
+    model_config = SettingsConfigDict(
+        env_file=".env",
+        case_sensitive=True,
+        extra="ignore"
+    )
     
     # Application
     APP_NAME: str = "Task Manager API"
@@ -21,7 +27,7 @@ class Settings(BaseSettings):
     # Database Configuration
     DATABASE_URL: str = "postgresql://postgres:password@localhost:5432/taskmanager"
     
-    # CORS Configuration
+    # CORS Configuration (comma-separated string)
     CORS_ORIGINS: str = "*"
     
     # API Configuration
@@ -30,16 +36,11 @@ class Settings(BaseSettings):
     # Security
     SECRET_KEY: str = "your-secret-key-change-in-production"
     
-    @field_validator("CORS_ORIGINS", mode="before")
-    @classmethod
-    def parse_cors_origins(cls, v: str) -> List[str]:
-        """Parse CORS origins from comma-separated string or return as list"""
-        if isinstance(v, str):
-            if v == "*":
-                return ["*"]
-            return [origin.strip() for origin in v.split(",")]
-        return v
-    
+    def get_cors_origins(self) -> List[str]:
+        """Parse CORS origins from comma-separated string"""
+        if self.CORS_ORIGINS == "*":
+            return ["*"]
+        return [origin.strip() for origin in self.CORS_ORIGINS.split(",")]
     @property
     def is_production(self) -> bool:
         """Check if running in production environment"""
@@ -49,11 +50,6 @@ class Settings(BaseSettings):
     def is_development(self) -> bool:
         """Check if running in development environment"""
         return self.ENV.lower() == "development"
-    
-    class Config:
-        env_file = ".env"
-        case_sensitive = True
-        extra = "ignore"
 
 
 @lru_cache()
